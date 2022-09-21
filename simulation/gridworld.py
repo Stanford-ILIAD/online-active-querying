@@ -32,10 +32,6 @@ class Grid(gym.Env):
             self.done = True
         return self.state, reward, done, {}
 
-    def get_agent_pos(self):
-        agent_pos, orientation = self._decode_state(self.state)
-        return agent_pos
-
     def _encode_state(self, agent_pos, orientation):
         x, y = agent_pos
         return int(orientation * self.n_x * self.n_y + x * self.n_y + y)
@@ -56,8 +52,6 @@ class Grid(gym.Env):
     def dynamics(self, state, action):
         agent_pos, orientation = self._decode_state(state)
         delta = self.orientation_lookup[orientation]
-        if (agent_pos == self.goal_pos).all():
-            return state, 0, True
         if action == 0:
             try:
                 if (agent_pos + delta < 0).any():
@@ -101,20 +95,15 @@ class Grid(gym.Env):
         print()
 
 class EmptyGrid(Grid):
-    board = np.zeros([8, 8])
-    pot_goals = []
-    for i in range(board.shape[0]):
-        for j in range(board.shape[1]):
-            if board[i, j] == 0 and i > 0 or j > 0:
-                pot_goals.append(np.array([i, j]))
-    variants = len(pot_goals)
+    variants = 49
 
     def __init__(self, variant):
         assert variant in range(self.variants)
+        board = np.zeros([8, 8])
         start_pos = np.zeros(2)
         start_orientation = 0
-        goal_pos = self.pot_goals[variant]
-        super().__init__(self.board, start_pos, start_orientation, goal_pos)
+        goal_pos = np.array([1 + variant // 7, 1 + variant % 7])
+        super().__init__(board, start_pos, start_orientation, goal_pos)
 
 
 class MazeGrid(Grid):
@@ -145,21 +134,22 @@ class MazeGrid(Grid):
 
 class RoomsGrid(Grid):
     board = np.array([
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 2, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 2, 2, 2, 2, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1],
-        [0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0],
-        [0, 0, 0, 2, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0],
-        [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1],
-        [0, 0, 0, 1, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0],
-        [0, 2, 0, 0, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 0],
-        [0, 2, 2, 1, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 0],
-        [1, 1, 1, 1, 0, 0, 0, 1, 0, 2, 0, 1, 1, 1, 1],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0, 1, 0, 2, 2, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+        [1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+        [1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 1],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
     ])
     pot_goals = []
     for i in range(board.shape[0]):

@@ -1,0 +1,138 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Highway Questions Experiment</title>
+
+<style> 
+input[type=button], input[type=submit], input[type=reset] {
+  background-color: #8066e6;
+  border: none;
+  color: white;
+  width: 100px;
+  height: 30px;
+  text-decoration: none;
+  font-weight: bold;
+  cursor: pointer;
+}
+td {
+  width: 279px;
+  border: 0px;
+  vertical-align: top;
+}
+</style>
+
+  </head>
+  
+<body>
+
+<center><div style="max-width: 900px;">
+    <div style="float: left;">
+        <canvas id="originalCanvas" width="250" height="600" style="border:1px solid #d3d3d3; float: left;">
+        Your browser does not support the HTML5 canvas tag.</canvas><br />
+        <input type="button" id="button0" value="button0" onclick="button_click(0)" style="display:none; float: left;" /> 
+        <input type="button" id="button1" value="button1" onclick="button_click(1)" style="display:none; float: right;" />
+    </div>
+    <div style="float: left; max-width: 300px;">
+        <input type="button" onclick="start()" value="Start" id="startButton" />
+        <br />
+        <!--<strong><u>Scores</u></strong><br />-->
+        <table style="display:none;"><tr>
+            <td id="score_col"></td>
+        </tr></table>
+        <div id="average_score"></div>
+    </div>
+</div></center>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.1.1/socket.io.js"></script>
+
+<script>
+    const FPS = 15;
+    let params = new URLSearchParams(location.search);
+    var username = params.get('username')
+    var roundNo = 0;
+    //const scores = [];
+    
+    const socket = io("http://54.244.63.162:8082"); // Change this if you are deploying it on a server!
+
+    var intervalId;
+    function start() {
+        document.getElementById("average_score").innerHTML = "Please wait a few seconds...";
+        socket.emit("startSignal", {"username": username, "data": ""});
+        document.getElementById("startButton").value = "Pause";
+        document.getElementById("startButton").onclick = pause;
+    }
+
+    function pause() {
+        window.clearInterval(intervalId);
+        document.getElementById("startButton").value = "Continue";
+        document.getElementById("startButton").onclick = resume;
+    }
+
+    function resume() {
+        document.getElementById("startButton").value = "Pause";
+        document.getElementById("startButton").onclick = pause;
+        intervalId = window.setInterval(act, 1000/FPS);
+    }
+
+    function act() {
+        socket.emit("sendAction", {"username": username});
+      }
+
+    var originalCanvas = document.getElementById("originalCanvas");
+    var originalCtx = originalCanvas.getContext("2d");
+   
+    var img = new Image();
+    img.onload = function() {
+        originalCtx.drawImage(img, 0, 0);
+    }
+
+    socket.on("display", function(data) {
+        img.src = 'data:image/png;base64,' + data;
+    });
+
+    socket.on("gameIsReady", function(data) {
+        document.getElementById("average_score").innerHTML = "";
+        intervalId = window.setInterval(act, 1000/FPS);
+    });
+
+    socket.on("experimentover", function(data) {
+        window.clearInterval(intervalId);
+        //const avg_score = scores.reduce((a, b) => a + b, 0) / scores.length;
+        //document.getElementById("average_score").innerHTML = "Average Score: " + avg_score.toFixed(1) + "<br />Key: " + data;
+        document.getElementById("average_score").innerHTML = "Complete the post-condition survey:<br /><a href='https://forms.gle/C7xc8wA1voz6vDy6A'>https://forms.gle/C7xc8wA1voz6vDy6A</a>";
+        document.getElementById("startButton").disabled = true;
+    });
+
+    socket.on("roundend_data", function(data) {
+        //document.getElementById("score_col").innerHTML += "<strong>" + (roundNo+1) +")</strong> " + data['current_cumulative_reward'].toFixed(1) + "<br />";
+        //scores.push(data['current_cumulative_reward']);
+        roundNo++;
+    });
+    
+    socket.on("create_question", function(data) {
+        window.clearInterval(intervalId);
+        document.getElementById("startButton").onclick = "";
+        document.getElementById("button0").value = data["options"][0];
+        document.getElementById("button1").value = data["options"][1];
+        document.getElementById("button0").style.display = "block";
+        document.getElementById("button1").style.display = "block";
+    });
+    
+    function button_click(selection) {
+        socket.emit("sendAnswer", {"username": username, "data": selection});
+        document.getElementById("button0").style.display = "none";
+        document.getElementById("button1").style.display = "none";
+        document.getElementById("startButton").onclick = pause;
+        intervalId = window.setInterval(act, 1000/FPS);
+        
+    }
+</script>
+
+</body>
+</html>
+
+

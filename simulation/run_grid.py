@@ -136,7 +136,7 @@ class ConstrainedEvoiRobot(Robot):
         query_value = torch.sum(p_change * q_diff, dim=0)
 
 
-def evaluate(param, env_class, robot, policies, envs):
+def evaluate(param, env_class, robot, policies):
     scores = []
     nums_queries = []
     p_task = []
@@ -159,10 +159,6 @@ def evaluate(param, env_class, robot, policies, envs):
                 total_queries += 1
             else:
                 state, reward, done, info = env.step(action)
-                agent_pos = env.get_agent_pos()
-                for i in range(env.variants):
-                    if list(agent_pos) == list(envs[i].goal_pos):
-                        agent.task_dist[i] = 0.
                 if rendering:
                     env.render()
                 score += reward
@@ -202,14 +198,13 @@ methods = dict(evoi=EvoiRobot, uncertainty=UncertainRobot, random=RandomRobot)
 
 def run_task(method, param):
     robot = methods[method]
-    return evaluate(param=param, env_class=env_class, robot=robot, policies=policies, envs=envs)[:2]
+    return evaluate(param=param, env_class=env_class, robot=robot, policies=policies)[:2]
 
 if __name__ == "__main__":
     params = np.exp(np.arange(np.log(args.parammin), np.log(args.parammax), np.log(1 + args.paramstep)))
     print(params)
     env_class = env_list[args.env]
-    envs = [env_class(variant=i) for i in range(env_class.variants)]
-    policies = [value_iteration.learn_q(env, gamma=args.gamma) for env in tqdm.tqdm(envs)]
+    policies = [value_iteration.learn_q(env_class(variant=i), gamma=args.gamma) for i in tqdm.trange(env_class.variants)]
 
     results = {}
     results = list(starmap(run_task, tqdm.tqdm([(args.method, x) for x in params])))
